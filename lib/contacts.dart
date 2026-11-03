@@ -227,12 +227,11 @@ extension _Contacts on _WorkspaceState {
         const _Field('Telefon'),
         _Field.select('Herkunft', _choices(origins)),
         staffField(),
-        const _Field.date('Geburtstag'),
-        const _Field.date('Erinnerung am'),
-        const _Field.check('Erinnerung jährlich'),
-        const _Field('Erinnerungsnotiz'),
         const _Field.check('Newsletter', label: 'Newsletter-Einwilligung'),
-        if (selected.contains('Käufer')) ..._buyerFields(),
+        if (selected.contains('Käufer')) ...[
+          const _Field.section('Käuferprofil'),
+          ..._buyerBasics(),
+        ],
         if (selected.contains('Eigentümer')) ...[
           const _Field('Portfolio'),
           const _Field('Strategie'),
@@ -265,7 +264,7 @@ extension _Contacts on _WorkspaceState {
     toast('Kontakt gespeichert');
   }
 
-  List<_Field> _buyerFields() => [
+  List<_Field> _buyerBasics() => [
     const _Field('Budget von', numeric: true),
     const _Field('Budget bis', numeric: true),
     _Field.select(
@@ -274,9 +273,11 @@ extension _Contacts on _WorkspaceState {
       label: 'Gewünschter Objekttyp',
     ),
     const _Field('Zimmer ab', numeric: true),
+    const _Field('Wohnfläche ab', label: 'Wohnfläche ab (m²)', numeric: true),
     const _Field('Region'),
-    const _Field('Such-PLZ', label: 'Such-PLZ · durch Kommas trennen'),
     _Field.multi('Suchkantone', _choices(cantons)),
+    const _Field('Lage und Erreichbarkeit', long: true),
+    const _Field('Weitere Kriterien', long: true),
   ];
 
   String? _validBuyer(Fields values) {
@@ -285,14 +286,37 @@ extension _Contacts on _WorkspaceState {
             number(values['Budget bis'] ?? '')) {
       return 'Das Budget bis muss mindestens dem Budget von entsprechen.';
     }
+    final maximum = number(values['Budget bis'] ?? '');
+    if (maximum > 0 && number(values['Wunschbudget'] ?? '') > maximum) {
+      return 'Das Wunschbudget muss innerhalb der absoluten Obergrenze liegen.';
+    }
     return null;
   }
 
   Future<void> _buyerForm(Record contact) async {
     final result = await form(
-      'Käuferprofil',
-      _buyerFields(),
-      initial: contact.fields,
+      'Käuferprofil bearbeiten',
+      [
+        const _Field.section('Suchauftrag und Budget'),
+        _Field.select('Suchstatus', _choices(buyerSearchStatuses)),
+        _Field.select('Finanzierungsstatus', _choices(financingStatuses)),
+        const _Field.date('Bezug bis', label: 'Spätester Bezugstermin'),
+        const _Field(
+          'Wunschbudget',
+          label: 'Wunschbudget (CHF)',
+          numeric: true,
+        ),
+        const _Field.check(
+          'Parkplatz im Budget',
+          label: 'Parkplatz im Budget einrechnen',
+        ),
+        const _Field.check(
+          'Renovation im Budget',
+          label: 'Renovation im Budget einrechnen',
+        ),
+        ..._buyerBasics(),
+      ],
+      initial: {'Suchstatus': buyerSearchStatus(contact), ...contact.fields},
       validate: _validBuyer,
     );
     if (result == null || !mounted) return;
@@ -300,8 +324,59 @@ extension _Contacts on _WorkspaceState {
     toast('Suchprofil gespeichert');
   }
 
-  Future<void> _contactDetail(Record contact) {
-    var tab = 'Info';
+  Widget _buyerProfile(Record contact) => _Panel(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _panelTitle(
+          'Käuferprofil',
+          action: TextButton(
+            onPressed: () => _buyerForm(contact),
+            child: const Text('Profil bearbeiten'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _facts({
+          'Suchstatus': buyerSearchStatus(contact),
+          'Finanzierung': contact['Finanzierungsstatus'],
+          'Bezug bis': contact['Bezug bis'].isEmpty
+              ? ''
+              : shortDate(contact['Bezug bis']),
+          'Wunschbudget': contact['Wunschbudget'].isEmpty
+              ? ''
+              : francs(contact['Wunschbudget']),
+          'Budget von': contact['Budget von'].isEmpty
+              ? ''
+              : francs(contact['Budget von']),
+          'Budget bis': contact['Budget bis'].isEmpty
+              ? ''
+              : francs(contact['Budget bis']),
+          'Im Budget einrechnen': [
+            if (contact.flag('Parkplatz im Budget')) 'Parkplatz',
+            if (contact.flag('Renovation im Budget')) 'Renovation',
+          ].join(', '),
+          'Objekttyp': contact['Suchobjekt'],
+          'Zimmer ab': contact['Zimmer ab'],
+          'Wohnfläche ab': contact['Wohnfläche ab'].isEmpty
+              ? ''
+              : '${contact['Wohnfläche ab']} m²',
+          'Region': contact['Region'],
+          'Suchkantone': contact['Suchkantone'],
+        }),
+        if (contact['Lage und Erreichbarkeit'].isNotEmpty ||
+            contact['Weitere Kriterien'].isNotEmpty) ...[
+          const SizedBox(height: 15),
+          _facts({
+            'Lage und Erreichbarkeit': contact['Lage und Erreichbarkeit'],
+            'Weitere Kriterien': contact['Weitere Kriterien'],
+          }, maxColumns: 1),
+        ],
+      ],
+    ),
+  );
+
+  Future<void> _contactDetail(Record contact, {String initialTab = 'Info'}) {
+    var tab = initialTab;
     return detail(
       contact.name,
       () => StatefulBuilder(
@@ -314,6 +389,7 @@ extension _Contacts on _WorkspaceState {
             'Info',
             'Aktivitäten',
             'Aufgaben',
+            'Erinnerungen',
             if (seller || owner) 'Liegenschaften',
             if (owner) 'Architektur',
             if (buyer) 'Matching',
@@ -350,9 +426,6 @@ extension _Contacts on _WorkspaceState {
                       'Ort',
                       'Kanton',
                       'Herkunft',
-                      'Geburtstag',
-                      'Erinnerung am',
-                      'Erinnerungsnotiz',
                       'Portfolio',
                       'Strategie',
                       'Hauptgewerk',
@@ -480,6 +553,7 @@ extension _Contacts on _WorkspaceState {
                     ],
                   ),
                 ),
+              if (tab == 'Erinnerungen') _contactReminders(contact),
               if (tab == 'Liegenschaften')
                 _Panel(
                   child: Column(
@@ -532,29 +606,7 @@ extension _Contacts on _WorkspaceState {
                   ),
                 ),
               if (tab == 'Matching') ...[
-                _Panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _panelTitle(
-                        'Käuferprofil',
-                        action: TextButton(
-                          onPressed: () => _buyerForm(contact),
-                          child: const Text('Bearbeiten'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _facts({
-                        'Budget bis': francs(contact['Budget bis']),
-                        'Objekttyp': contact['Suchobjekt'],
-                        'Zimmer ab': contact['Zimmer ab'],
-                        'Region': contact['Region'],
-                        'PLZ': contact['Such-PLZ'],
-                        'Kantone': contact['Suchkantone'],
-                      }),
-                    ],
-                  ),
-                ),
+                _buyerProfile(contact),
                 const SizedBox(height: 11),
                 _matchResults(
                   data.matches(buyerId: contact.id),

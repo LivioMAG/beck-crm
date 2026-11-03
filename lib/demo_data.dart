@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+
+part 'buyer_matching.dart';
 
 const roles = [
   'Verkäufer',
@@ -161,6 +165,31 @@ const permissions = [
 
 typedef Fields = Map<String, String>;
 
+const reminderTypes = ['Einmalig', 'Wöchentlich', 'Monatlich', 'Jährlich'];
+const reminderWeekdays = [
+  'Montag',
+  'Dienstag',
+  'Mittwoch',
+  'Donnerstag',
+  'Freitag',
+  'Samstag',
+  'Sonntag',
+];
+const reminderMonths = [
+  'Januar',
+  'Februar',
+  'März',
+  'April',
+  'Mai',
+  'Juni',
+  'Juli',
+  'August',
+  'September',
+  'Oktober',
+  'November',
+  'Dezember',
+];
+
 class Record {
   Record(this.id, this.fields);
   final String id;
@@ -175,14 +204,6 @@ class Record {
       .where((part) => part.isNotEmpty)
       .toList();
   String get name => this['Name'];
-}
-
-class Match {
-  const Match(this.buyer, this.property, this.score, this.reasons);
-  final Record buyer;
-  final Record property;
-  final int score;
-  final List<String> reasons;
 }
 
 class DemoData extends ChangeNotifier {
@@ -303,116 +324,62 @@ class DemoData extends ChangeNotifier {
       .toList();
 
   List<Match> matches({String? buyerId, String? propertyId}) {
+    final buyers = visibleContacts.where(
+      (contact) =>
+          contact.values('Rollen').contains('Käufer') &&
+          (buyerId == null
+              ? buyerSearchStatus(contact) == 'Aktiv'
+              : contact.id == buyerId),
+    );
+    final objects = visibleProperties
+        .where((object) => propertyId == null || object.id == propertyId)
+        .map((object) => (object, status(object) == 'Verkauft'))
+        .toList();
     final results = <Match>[];
-    for (final buyer in visibleContacts.where(
-      (c) =>
-          c.values('Rollen').contains('Käufer') &&
-          (buyerId == null || c.id == buyerId),
-    )) {
-      for (final property in visibleProperties.where(
-        (p) =>
-            status(p) != 'Verkauft' &&
-            (propertyId == null || p.id == propertyId),
-      )) {
-        final price = number(property['Preis']);
-        final budget = number(buyer['Budget bis']);
-        final lower = number(buyer['Budget von']);
-        final priceFits =
-            price > 0 && budget > 0 && price <= budget && price >= lower;
-        final cantonFits = buyer
-            .values('Suchkantone')
-            .contains(property['Kanton']);
-        final areaFits =
-            buyer.values('Such-PLZ').contains(property['PLZ']) ||
-            (buyer['Region'].isNotEmpty &&
-                buyer['Region'].toLowerCase() == property['Ort'].toLowerCase());
-        final roomsFit =
-            number(buyer['Zimmer ab']) > 0 &&
-            number(property['Zimmer']) >= number(buyer['Zimmer ab']);
-        final newProperty = property.flag('Neu');
-        final raw =
-            (priceFits ? 35 : 0) +
-            (cantonFits ? 20 : 0) +
-            (areaFits ? 20 : 0) +
-            (roomsFit ? 15 : 0) +
-            (newProperty ? 5 : 0);
-        results.add(
-          Match(buyer, property, (raw / 95 * 100).round(), [
-            if (priceFits)
-              'Preis passt'
-            else if (budget > 0 && price > budget)
-              'Über Budget',
-            if (cantonFits) 'Kt. ${property['Kanton']}',
-            if (areaFits) 'Region passt',
-            if (roomsFit) 'Zimmer passen',
-            if (buyer['Suchobjekt'].isNotEmpty &&
-                buyer['Suchobjekt'] != property['Typ'])
-              'Anderer Objekttyp',
-            if (newProperty) 'Neu',
-          ]),
-        );
+    for (final buyer in buyers) {
+      for (final (object, sold) in objects) {
+        final feedback = readMatchFeedback(buyer, object);
+        if (!sold || feedback.isNotEmpty) {
+          results.add(_evaluateMatch(buyer, object, feedback, sold: sold));
+        }
       }
     }
-    return results..sort((a, b) => b.score.compareTo(a.score));
+    return results..sort((a, b) {
+      final byStatus = a.state.index.compareTo(b.state.index);
+      return byStatus == 0 ? b.score.compareTo(a.score) : byStatus;
+    });
   }
 
-  List<Record> upcomingReminders() {
-    Record yearly(
-      String id,
-      String title,
-      String value,
-      String contact,
-      String staff,
-      String kind,
-    ) => Record(id, {
-      'Name': title,
-      'Datum': iso(nextAnniversary(parseDate(value))),
-      'Kontakt': contact,
-      'Zuständig': staff,
-      'Typ': kind,
-    });
+  List<Record> upcomingReminders({bool includeCompleted = false}) {
+    bool include(Record reminder) =>
+        includeCompleted || !completedReminders.contains(reminder.id);
+
+    Record scheduled(Record reminder) {
+      final date = parseDate(reminder['Datum']);
+      final nextDate = nextReminderDate(reminder, day());
+      return Record(reminder.id, {
+        ...reminder.fields,
+        if (reminder['Typ'] == 'Jährlich' && date != null) ...{
+          'Tag': '${date.day}',
+          'Monat': '${date.month}',
+        },
+        'Datum': iso(nextDate),
+      });
+    }
+
     return [
       for (final r in reminders.where(canSeeLinked))
-        if (r['Typ'] == 'Jährlich')
-          yearly(
-            r.id,
-            r.name,
-            r['Datum'],
-            r['Kontakt'],
-            r['Zuständig'],
-            r['Typ'],
-          )
-        else if (!completedReminders.contains(r.id))
-          r,
-      for (final c in visibleContacts.where(
-        (c) => parseDate(c['Geburtstag']) != null,
-      ))
-        yearly(
-          'birthday-${c.id}',
-          'Geburtstag · ${c.name}',
-          c['Geburtstag'],
-          c.id,
-          c['Zuständig'],
-          'Geburtstag',
-        ),
+        if (reminderTypes.contains(r['Typ']) && include(r)) scheduled(r),
       for (final c in visibleContacts.where(
         (c) =>
             parseDate(c['Erinnerung am']) != null &&
-            (c.flag('Erinnerung jährlich') ||
+            (includeCompleted ||
+                c.flag('Erinnerung jährlich') ||
                 !completedReminders.contains(
                   'contact-${c.id}-${c['Erinnerung am']}',
                 )),
       ))
-        if (c.flag('Erinnerung jährlich'))
-          yearly(
-            'contact-${c.id}-${c['Erinnerung am']}',
-            c['Erinnerungsnotiz'].isEmpty ? c.name : c['Erinnerungsnotiz'],
-            c['Erinnerung am'],
-            c.id,
-            c['Zuständig'],
-            'Jährlich',
-          )
-        else
+        scheduled(
           Record('contact-${c.id}-${c['Erinnerung am']}', {
             'Name': c['Erinnerungsnotiz'].isEmpty
                 ? c.name
@@ -420,18 +387,23 @@ class DemoData extends ChangeNotifier {
             'Datum': c['Erinnerung am'],
             'Kontakt': c.id,
             'Zuständig': c['Zuständig'],
-            'Typ': 'Einmalig',
+            'Typ': c.flag('Erinnerung jährlich') ? 'Jährlich' : 'Einmalig',
+            'Quelle': 'Kontakt',
           }),
+        ),
       for (final p in visibleProperties.where(
         (p) => parseDate(p['Kaufdatum']) != null,
       ))
-        yearly(
-          'purchase-${p.id}',
-          'Kaufjahrestag · ${p.name}',
-          p['Kaufdatum'],
-          p['Eigentümer'],
-          p['Zuständig'],
-          'Jährlich',
+        scheduled(
+          Record('purchase-${p.id}', {
+            'Name': 'Kaufjahrestag · ${p.name}',
+            'Datum': p['Kaufdatum'],
+            'Ereignisdatum': p['Kaufdatum'],
+            'Kontakt': p['Eigentümer'],
+            'Zuständig': p['Zuständig'],
+            'Typ': 'Jährlich',
+            'Objekt': p.id,
+          }),
         ),
     ]..sort((a, b) => a['Datum'].compareTo(b['Datum']));
   }
@@ -444,7 +416,12 @@ class DemoData extends ChangeNotifier {
       }
     }
     mandates.removeWhere((entry) => entry['Kontakt'] == record.id);
-    for (final entry in [...tasks, ...activities, ...reminders]) {
+    reminders.removeWhere((entry) {
+      if (entry['Kontakt'] != record.id) return false;
+      completedReminders.remove(entry.id);
+      return true;
+    });
+    for (final entry in [...tasks, ...activities]) {
       if (entry['Kontakt'] == record.id) entry.fields.remove('Kontakt');
     }
   }
@@ -551,11 +528,23 @@ class DemoData extends ChangeNotifier {
       'Herkunft': 'Empfehlung',
       'Budget von': '700000',
       'Budget bis': '1150000',
+      'Wunschbudget': '1020000',
+      'Parkplatz im Budget': 'ja',
+      'Finanzierungsstatus': 'Bestätigt',
+      'Suchstatus': 'Aktiv',
+      'Bezug bis': iso(day(150)),
       'Suchobjekt': 'Wohnung',
       'Zimmer ab': '3.5',
+      'Wohnfläche ab': '85',
       'Region': 'Luzern',
-      'Such-PLZ': '6003, 6005',
       'Suchkantone': 'LU, NW',
+      'Lage und Erreichbarkeit':
+          'Am liebsten in Luzern (6003 oder 6005), Horw ist auch möglich. '
+          'Emmen kommt nicht infrage. Maximal 25 Minuten zum Bahnhof Luzern '
+          'und 10 Minuten zu Fuss zur nächsten ÖV-Haltestelle.',
+      'Weitere Kriterien':
+          'Die Wohnung sollte bezugsbereit sein und braucht einen Lift. '
+          'Ein Balkon wäre schön. Baurecht kommt nicht infrage.',
       'Newsletter': 'ja',
       'Notiz': 'Sucht eine helle Wohnung mit Balkon und guter ÖV-Anbindung.',
     }, id: 'anna');
@@ -571,7 +560,6 @@ class DemoData extends ChangeNotifier {
       'Zuständig': 'livio',
       'Herkunft': 'Direktkontakt',
       'Newsletter': 'ja',
-      'Geburtstag': iso(day(8).copyWith(year: 1978)),
       'Portfolio': 'Wohnung und Wohnhaus',
     }, id: 'jonas');
     add(contacts, {
@@ -596,10 +584,13 @@ class DemoData extends ChangeNotifier {
       'Zuständig': 'mara',
       'Herkunft': 'Inserat',
       'Budget bis': '1650000',
+      'Finanzierungsstatus': 'In Abklärung',
       'Zimmer ab': '4.5',
       'Suchkantone': 'LU, NW',
       'Suchobjekt': 'Einfamilienhaus',
-      'Such-PLZ': '6370',
+      'Region': 'Stans',
+      'Lage und Erreichbarkeit': 'Möglichst in Stans (6370).',
+      'Weitere Kriterien': 'Mindestens 400 m² Grundstück. Ein Garten und ein Parkplatz wären schön.',
       'Newsletter': 'ja',
     }, id: 'weber');
     add(contacts, {
@@ -620,6 +611,7 @@ class DemoData extends ChangeNotifier {
       'Zuständig': 'livio',
       'Herkunft': 'Website',
       'Budget bis': '1450000',
+      'Suchstatus': 'Pausiert',
       'Zimmer ab': '4',
       'Suchkantone': 'ZG, LU',
       'Suchobjekt': 'Wohnung',
@@ -669,6 +661,17 @@ class DemoData extends ChangeNotifier {
       'Zimmer': '4.5',
       'Fläche': '112',
       'Preis': '980000',
+      'Zustand': 'Bezugsbereit',
+      'Etage': '2',
+      'Verfügbar ab': iso(day(45)),
+      'Parkplatzkosten': '25000',
+      'Renovationskosten': '0',
+      'Pendelziel': 'Luzern Bahnhof',
+      'Pendelminuten': '14',
+      'ÖV Gehminuten': '5',
+      'Schule Gehminuten': '8',
+      'Merkmale vorhanden': 'Balkon, Parkplatz, Lift, Stufenloser Zugang',
+      'Merkmale fehlen': 'Garten, Baurecht',
       'Eigentümer': 'jonas',
       'Verkäufer': 'jonas',
       'Zuständig': 'livio',
@@ -688,6 +691,10 @@ class DemoData extends ChangeNotifier {
       'Fläche': '168',
       'Grundstück': '560',
       'Preis': '1480000',
+      'Zustand': 'Renovationsbedürftig',
+      'Renovationskosten': '90000',
+      'Merkmale vorhanden': 'Terrasse, Garten, Parkplatz',
+      'Merkmale fehlen': 'Lift, Baurecht',
       'Eigentümer': 'clara',
       'Zuständig': 'livio',
       'Off-Market': 'ja',
@@ -703,6 +710,13 @@ class DemoData extends ChangeNotifier {
       'Zimmer': '3.5',
       'Fläche': '86',
       'Preis': '785000',
+      'Merkmale vorhanden': 'Balkon',
+      'Merkmale fehlen': 'Baurecht',
+      'Verfügbar ab': iso(day(75)),
+      'Parkplatzkosten': '0',
+      'Pendelziel': 'Luzern Bahnhof',
+      'Pendelminuten': '11',
+      'ÖV Gehminuten': '3',
       'Verkäufer': 'vera',
       'Zuständig': 'noah',
       'Dossier/Exposé': 'ja',
@@ -879,13 +893,38 @@ int daysUntil(String value) {
   ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
 }
 
-DateTime? nextAnniversary(DateTime? date) {
-  if (date == null) return null;
-  final today = day();
-  final current = DateTime(today.year, date.month, date.day);
-  return current.isBefore(today)
-      ? DateTime(today.year + 1, date.month, date.day)
-      : current;
+DateTime? nextReminderDate(Record reminder, DateTime today) {
+  final date = parseDate(reminder['Datum']);
+  final weekday = int.tryParse(reminder['Wochentag']);
+  final targetDay = int.tryParse(reminder['Tag']);
+  final targetMonth = int.tryParse(reminder['Monat']);
+
+  DateTime occurrence(int year, int month, int dayOfMonth) {
+    final lastDay = DateTime(year, month + 1, 0).day;
+    return DateTime(year, month, dayOfMonth.clamp(1, lastDay));
+  }
+
+  switch (reminder['Typ']) {
+    case 'Wöchentlich' when weekday != null:
+      final offset = (weekday - today.weekday) % DateTime.daysPerWeek;
+      return DateTime(today.year, today.month, today.day + offset);
+    case 'Monatlich' when targetDay != null:
+      final current = occurrence(today.year, today.month, targetDay);
+      return current.isBefore(today)
+          ? occurrence(today.year, today.month + 1, targetDay)
+          : current;
+    case 'Jährlich':
+      if (date != null && !date.isBefore(today)) return date;
+      final month = targetMonth ?? date?.month;
+      final dayOfMonth = targetDay ?? date?.day;
+      if (month == null || dayOfMonth == null) return null;
+      final current = occurrence(today.year, month, dayOfMonth);
+      return current.isBefore(today)
+          ? occurrence(today.year + 1, month, dayOfMonth)
+          : current;
+    default:
+      return date;
+  }
 }
 
 double number(String value) =>

@@ -15,7 +15,7 @@ extension _Overview on _WorkspaceState {
     final active = data.visibleProperties
         .where((p) => data.status(p) != 'Verkauft')
         .length;
-    final matches = data.matches().where((match) => match.score >= 70).length;
+    final matches = data.matches().where((match) => match.strong).length;
     final today = day();
     const months = [
       'Januar',

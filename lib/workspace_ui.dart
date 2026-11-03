@@ -539,7 +539,7 @@ Widget _fitGrid(
   },
 );
 
-Widget _facts(Map<String, String> facts) => _fitGrid(
+Widget _facts(Map<String, String> facts, {int maxColumns = 3}) => _fitGrid(
   [
     for (final entry in facts.entries)
       if (entry.value.isNotEmpty)
@@ -563,7 +563,7 @@ Widget _facts(Map<String, String> facts) => _fitGrid(
         ),
   ],
   minWidth: 142,
-  maxColumns: 3,
+  maxColumns: maxColumns,
   gap: 15,
 );
 
@@ -840,9 +840,18 @@ class _DialogFrame extends StatelessWidget {
   }
 }
 
-enum _FieldKind { text, select, multi, check, date, lookup }
+enum _FieldKind { text, select, multi, check, date, lookup, section }
 
 class _Field {
+  const _Field.section(this.key)
+    : kind = _FieldKind.section,
+      label = null,
+      required = false,
+      long = true,
+      numeric = false,
+      secret = false,
+      options = const {};
+
   const _Field(
     this.key, {
     this.label,
@@ -910,6 +919,7 @@ class _Editor extends StatefulWidget {
     required this.initial,
     required this.submit,
     this.validate,
+    this.showField,
     this.area,
     this.sheet = false,
   });
@@ -918,6 +928,7 @@ class _Editor extends StatefulWidget {
   final Fields initial;
   final String submit;
   final String? Function(Fields)? validate;
+  final bool Function(_Field, Fields)? showField;
   final String? area;
   final bool sheet;
   @override
@@ -991,6 +1002,11 @@ class _EditorState extends State<_Editor> {
     final title = field.label ?? field.key;
     final value = values[field.key] ?? '';
     switch (field.kind) {
+      case _FieldKind.section:
+        return Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 2),
+          child: _panelTitle(title),
+        );
       case _FieldKind.select:
         return DropdownButtonFormField<String>(
           initialValue: field.options.containsKey(value) || !field.required
@@ -1007,7 +1023,10 @@ class _EditorState extends State<_Editor> {
                 child: Text(option.value, overflow: TextOverflow.ellipsis),
               ),
           ],
-          onChanged: (entry) => values[field.key] = entry ?? '',
+          onChanged: (entry) {
+            values[field.key] = entry ?? '';
+            if (widget.showField != null) setState(() => error = null);
+          },
           validator: (entry) => validate(field, entry),
         );
       case _FieldKind.lookup:
@@ -1178,12 +1197,14 @@ class _EditorState extends State<_Editor> {
             runSpacing: 12,
             children: [
               for (final field in widget.fields)
-                SizedBox(
-                  width: wide && !field.long && field.kind != _FieldKind.multi
-                      ? (size.maxWidth - gap) / 2
-                      : size.maxWidth,
-                  child: input(field),
-                ),
+                if (widget.showField?.call(field, values) ?? true)
+                  SizedBox(
+                    key: ValueKey(field.key),
+                    width: wide && !field.long && field.kind != _FieldKind.multi
+                        ? (size.maxWidth - gap) / 2
+                        : size.maxWidth,
+                    child: input(field),
+                  ),
               if (error != null)
                 SizedBox(
                   width: size.maxWidth,

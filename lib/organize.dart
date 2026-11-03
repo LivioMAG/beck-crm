@@ -234,30 +234,151 @@ extension _Organize on _WorkspaceState {
     toast('Aufgabe gespeichert');
   }
 
-  Future<void> _reminderForm() async {
+  Widget _contactReminders(Record contact) {
+    final reminders = data
+        .upcomingReminders(includeCompleted: true)
+        .where((reminder) => reminder['Kontakt'] == contact.id);
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _panelTitle('Erinnerungen', icon: Icons.notifications_none_rounded),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _newButton(
+              'Erinnerung hinzufügen',
+              () => _reminderForm(contact: contact),
+            ),
+          ),
+          const SizedBox(height: 9),
+          _items(
+            [
+              for (final reminder in reminders)
+                _reminderRow(reminder, inContact: true),
+            ],
+            empty:
+                'Für diesen Kontakt sind noch keine Erinnerungen hinterlegt.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reminderForm({Record? contact, Record? reminder}) async {
+    final saved = reminder == null
+        ? null
+        : data.find(data.reminders, reminder.id);
+    final legacy = reminder?['Quelle'] == 'Kontakt' ? contact : null;
+    final selectedContact =
+        contact ?? data.find(data.contacts, saved?['Kontakt'] ?? '');
+    final existingType = saved?['Typ'] ?? reminder?['Typ'] ?? 'Einmalig';
+    final previousAnnualDate = existingType == 'Jährlich'
+        ? parseDate(saved?['Datum'] ?? legacy?['Erinnerung am'] ?? '')
+        : null;
     final result = await form(
-      'Neue Erinnerung',
+      reminder == null ? 'Neue Erinnerung' : 'Erinnerung bearbeiten',
       [
         const _Field('Name', label: 'Titel', required: true),
-        const _Field.date('Datum', required: true),
         _Field.select(
           'Typ',
-          _choices(['Einmalig', 'Jährlich']),
+          _choices(reminderTypes),
+          label: 'Wiederholung',
           required: true,
         ),
-        _Field.lookup('Kontakt', options(data.visibleContacts)),
+        const _Field.date('Datum', label: 'Erinnern am', required: true),
+        _Field.select('Wochentag', {
+          for (final (index, name) in reminderWeekdays.indexed)
+            '${index + 1}': name,
+        }, required: true),
+        _Field.select('Tag', {
+          for (var i = 1; i <= 31; i++) '$i': '$i',
+        }, required: true),
+        _Field.select('Monat', {
+          for (final (index, name) in reminderMonths.indexed)
+            '${index + 1}': name,
+        }, required: true),
+        if (contact == null)
+          _Field.lookup('Kontakt', options(data.visibleContacts)),
+        const _Field.date(
+          'Ereignisdatum',
+          label: 'Datum des Termins oder Ereignisses (optional)',
+        ),
+        _Field.lookup(
+          'Objekt',
+          options(data.visibleProperties),
+          label: 'Liegenschaft (optional)',
+        ),
+        const _Field('Notiz', long: true),
       ],
-      initial: {'Datum': iso(day(1)), 'Typ': 'Einmalig'},
+      initial: {
+        'Datum': iso(day(1)),
+        'Typ': existingType,
+        if (selectedContact != null) 'Kontakt': selectedContact.id,
+        if (legacy != null) ...{
+          'Name': reminder!.name,
+          'Datum': legacy['Erinnerung am'],
+          'Typ': reminder['Typ'],
+        },
+        ...?saved?.fields,
+        if (previousAnnualDate != null) ...{
+          'Tag': '${previousAnnualDate.day}',
+          'Monat': '${previousAnnualDate.month}',
+        },
+      },
+      showField: (field, values) => switch (field.key) {
+        'Datum' => values['Typ'] == 'Einmalig',
+        'Wochentag' => values['Typ'] == 'Wöchentlich',
+        'Tag' => values['Typ'] == 'Monatlich' || values['Typ'] == 'Jährlich',
+        'Monat' => values['Typ'] == 'Jährlich',
+        _ => true,
+      },
+      validate: (values) {
+        if (values['Typ'] != 'Jährlich') return null;
+        final month = int.parse(values['Monat']!);
+        final dayOfMonth = int.parse(values['Tag']!);
+        if (DateTime(2000, month, dayOfMonth).month != month) {
+          return 'Diesen Tag gibt es im ausgewählten Monat nicht.';
+        }
+        return null;
+      },
     );
     if (result == null || !mounted) return;
-    data.change(
-      () => data.add(data.reminders, {...result, 'Zuständig': data.user!.id}),
-    );
+    final type = result['Typ'];
+    if (type != 'Einmalig') result['Datum'] = '';
+    if (type != 'Wöchentlich') result['Wochentag'] = '';
+    if (type != 'Monatlich' && type != 'Jährlich') result['Tag'] = '';
+    if (type != 'Jährlich') result['Monat'] = '';
+    data.change(() {
+      if (reminder != null && type != 'Einmalig') {
+        data.completedReminders.remove(reminder.id);
+      }
+      if (saved != null) {
+        saved.update(result);
+        return;
+      }
+      data.add(data.reminders, {
+        ...result,
+        'Zuständig': legacy?['Zuständig'] ?? data.user!.id,
+      }, id: reminder?.id);
+      if (legacy != null) {
+        legacy.update({
+          'Erinnerung am': '',
+          'Erinnerungsnotiz': '',
+          'Erinnerung jährlich': '',
+        });
+      }
+    });
     toast('Erinnerung gespeichert');
   }
 
-  Widget _reminderRow(Record reminder, {bool compact = false}) {
+  Widget _reminderRow(
+    Record reminder, {
+    bool compact = false,
+    bool inContact = false,
+  }) {
     final contact = data.find(data.contacts, reminder['Kontakt']);
+    final completed = data.completedReminders.contains(reminder.id);
     final due = daysUntil(reminder['Datum']);
     final color = due <= 7
         ? red
@@ -271,14 +392,15 @@ extension _Organize on _WorkspaceState {
         '',
         size: 35,
         color: color,
-        icon: switch (type) {
-          'Geburtstag' => Icons.cake_outlined,
-          'Jährlich' => Icons.event_repeat_rounded,
-          _ => Icons.event_outlined,
-        },
+        icon: type == 'Einmalig'
+            ? Icons.event_outlined
+            : Icons.event_repeat_rounded,
       ),
-      subtitle: '$type · ${shortDate(reminder['Datum'])}',
-      trailing: compact
+      subtitle:
+          '${_reminderRepeat(reminder)} · ${shortDate(reminder['Datum'])}',
+      trailing: completed
+          ? const _Pill('Erledigt', color: green)
+          : compact
           ? _Pill(
               due < 0
                   ? 'Überfällig'
@@ -308,49 +430,84 @@ extension _Organize on _WorkspaceState {
                   ),
               ],
             ),
-      onTap: () => detail(
-        reminder.name,
-        () => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _Panel(
-              child: _facts({
-                'Datum': shortDate(reminder['Datum']),
-                'Typ': type,
-                'Kontakt': contact?.name ?? '—',
-              }),
-            ),
-            const SizedBox(height: 9),
-            Wrap(
-              spacing: 7,
-              children: [
-                if (contact != null) ...[
-                  OutlinedButton(
-                    onPressed: () => _contactDetail(contact),
-                    child: const Text('Kontakt öffnen'),
-                  ),
-                  TextButton(
-                    onPressed: () =>
-                        _mail(contact: contact, title: reminder.name),
-                    child: const Text('Quick-Mail'),
-                  ),
-                ],
-                if (type == 'Einmalig' &&
-                    !data.completedReminders.contains(reminder.id))
-                  _newButton(
-                    'Erledigen',
-                    () => data.change(
-                      () => data.completedReminders.add(reminder.id),
-                    ),
-                    icon: Icons.check_rounded,
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+      onTap: () => _reminderDetail(reminder, contact, inContact: inContact),
     );
   }
+
+  Future<void> _reminderDetail(
+    Record reminder,
+    Record? contact, {
+    required bool inContact,
+  }) => detail(reminder.name, () {
+    final current = data
+        .upcomingReminders(includeCompleted: true)
+        .where((entry) => entry.id == reminder.id)
+        .firstOrNull;
+    if (current == null)
+      return const _Panel(child: Text('Erinnerung wurde geändert.'));
+    final type = current['Typ'];
+    final property = data.visibleProperties
+        .where((entry) => entry.id == current['Objekt'])
+        .firstOrNull;
+    final canEdit =
+        data.find(data.reminders, current.id) != null ||
+        current['Quelle'] == 'Kontakt';
+    final completed = data.completedReminders.contains(current.id);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Panel(
+          child: _facts({
+            'Erinnern am': shortDate(current['Datum']),
+            'Wiederholung': _reminderRepeat(current),
+            'Kontakt': contact?.name ?? '—',
+            if (current['Ereignisdatum'].isNotEmpty)
+              'Datum des Ereignisses': shortDate(current['Ereignisdatum']),
+            if (property != null) 'Liegenschaft': property.name,
+            'Notiz': current['Notiz'],
+          }),
+        ),
+        const SizedBox(height: 9),
+        Wrap(
+          spacing: 7,
+          children: [
+            if (canEdit)
+              OutlinedButton(
+                onPressed: () =>
+                    _reminderForm(contact: contact, reminder: current),
+                child: const Text('Bearbeiten'),
+              ),
+            if (property != null)
+              OutlinedButton(
+                onPressed: () => _propertyDetail(property),
+                child: const Text('Liegenschaft öffnen'),
+              ),
+            if (contact != null && !inContact)
+              OutlinedButton(
+                onPressed: () =>
+                    _contactDetail(contact, initialTab: 'Erinnerungen'),
+                child: const Text('Kontakt öffnen'),
+              ),
+            if (contact != null)
+              TextButton(
+                onPressed: () => _mail(contact: contact, title: reminder.name),
+                child: const Text('Quick-Mail'),
+              ),
+            if (type == 'Einmalig')
+              _newButton(
+                completed ? 'Wieder öffnen' : 'Erledigen',
+                () => data.change(
+                  () => completed
+                      ? data.completedReminders.remove(current.id)
+                      : data.completedReminders.add(current.id),
+                ),
+                icon: Icons.check_rounded,
+              ),
+          ],
+        ),
+      ],
+    );
+  });
 
   Future<void> _settings({String initial = 'Einstellungen'}) {
     var tab = initial;
@@ -980,6 +1137,25 @@ extension _Organize on _WorkspaceState {
       ],
     ),
   );
+}
+
+String _reminderRepeat(Record reminder) {
+  String? nameAt(List<String> names, String value) {
+    final number = int.tryParse(value);
+    if (number == null || number < 1 || number > names.length) return null;
+    return names[number - 1];
+  }
+
+  final weekday = nameAt(reminderWeekdays, reminder['Wochentag']);
+  final month = nameAt(reminderMonths, reminder['Monat']);
+  final dayOfMonth = reminder['Tag'];
+  return switch (reminder['Typ']) {
+    'Wöchentlich' when weekday != null => 'Jeden $weekday',
+    'Monatlich' when dayOfMonth.isNotEmpty => 'Monatlich am $dayOfMonth.',
+    'Jährlich' when dayOfMonth.isNotEmpty && month != null =>
+      'Jährlich am $dayOfMonth. $month',
+    final type => type,
+  };
 }
 
 Widget _actionCard(

@@ -486,6 +486,7 @@ class _WorkspaceState extends State<Workspace> {
     Fields initial = const {},
     String submit = 'Speichern',
     String? Function(Fields)? validate,
+    bool Function(_Field, Fields)? showField,
     bool compact = false,
   }) {
     final editor = _Editor(
@@ -494,6 +495,7 @@ class _WorkspaceState extends State<Workspace> {
       initial: initial,
       submit: submit,
       validate: validate,
+      showField: showField,
       area: compact ? null : section.label,
     );
     return compact

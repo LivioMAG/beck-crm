@@ -1,5 +1,7 @@
 # BeckCRM
 
+[Web-Demo auf GitHub Pages](https://liviomag.github.io/beck-crm/)
+
 Klickbarer Flutter-Web-Prototyp mit fiktiven Daten. Änderungen gelten für die
 aktuelle Browsersitzung bis zum Neuladen. Versand, Druck und Excel-Abläufe
 verwenden Demo-Vorschauen.
@@ -18,3 +20,8 @@ ausprobieren. Das Demo-Passwort für die Startkonten und den GL-Bereich ist
 - **Matching** · Anna Meier öffnen, «Matching» wählen und das Exposé der Wohnung am Lindenweg mit Outlook-Vorschau und Nachfassaufgabe durchspielen.
 - **Architektur** · Villa Seehof öffnen, Checkliste und Phase ändern und die Druckvorschau ansehen.
 - **Schnell-Erfassung** · Einen Anruf erfassen und im Kontaktverlauf prüfen.
+
+Für die Veröffentlichung unter **Settings → Pages → Source** einmalig
+**GitHub Actions** auswählen. Der Workflow **Deploy BeckCRM to GitHub Pages**
+baut und veröffentlicht die Demo bei Änderungen auf `main` und lässt sich
+unter **Actions** auch manuell starten.

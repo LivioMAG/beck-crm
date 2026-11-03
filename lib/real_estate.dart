@@ -202,6 +202,38 @@ extension _RealEstate on _WorkspaceState {
         const _Field.check('Off-Market'),
         const _Field.date('Kaufdatum'),
         const _Field('Beschreibung', long: true),
+        const _Field.section('Ausstattung, Lage und Bezug'),
+        _Field.select('Zustand', _choices(propertyConditions)),
+        const _Field('Etage', label: 'Etage (0 = Erdgeschoss)', numeric: true),
+        const _Field.date('Verfügbar ab'),
+        const _Field(
+          'Parkplatzkosten',
+          label: 'Zusätzliche Parkplatzkosten (CHF, 0 = keine)',
+          numeric: true,
+        ),
+        const _Field(
+          'Renovationskosten',
+          label: 'Geschätzte Renovationskosten (CHF, 0 = keine)',
+          numeric: true,
+        ),
+        const _Field('Pendelziel'),
+        const _Field(
+          'Pendelminuten',
+          label: 'Pendelzeit zum Ziel (Min.)',
+          numeric: true,
+        ),
+        const _Field(
+          'ÖV Gehminuten',
+          label: 'Gehzeit zum ÖV (Min.)',
+          numeric: true,
+        ),
+        const _Field(
+          'Schule Gehminuten',
+          label: 'Gehzeit zur Schule (Min.)',
+          numeric: true,
+        ),
+        _Field.multi('Merkmale vorhanden', _choices(propertyFeatures)),
+        _Field.multi('Merkmale fehlen', _choices(propertyFeatures)),
       ],
       initial: {
         'Zuständig': data.user!.id,
@@ -212,6 +244,18 @@ extension _RealEstate on _WorkspaceState {
         if (contact?.values('Rollen').contains('Verkäufer') ?? false)
           'Verkäufer': contact!.id,
         ...?property?.fields,
+      },
+      validate: (fields) {
+        final record = Record('', fields);
+        final present = record.values('Merkmale vorhanden').toSet();
+        if (record.values('Merkmale fehlen').any(present.contains)) {
+          return 'Merkmale jeweils nur unter «vorhanden» oder «fehlen» erfassen.';
+        }
+        if (record['Pendelminuten'].isNotEmpty &&
+            record['Pendelziel'].isEmpty) {
+          return 'Zur Pendelzeit bitte ein Pendelziel angeben.';
+        }
+        return null;
       },
     );
     if (result == null || !mounted) return;
@@ -284,6 +328,47 @@ extension _RealEstate on _WorkspaceState {
                     'Zuständig': data.staffName(property['Zuständig']),
                     'Beschreibung': property['Beschreibung'],
                   }),
+                ),
+                const SizedBox(height: 12),
+                _Panel(
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Ausstattung, Lage und Bezug',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _facts({
+                        for (final key in [
+                          'Merkmale vorhanden',
+                          'Merkmale fehlen',
+                          'Zustand',
+                          'Etage',
+                          'Pendelziel',
+                        ])
+                          key: property[key],
+                        for (final key in [
+                          'Pendelminuten',
+                          'ÖV Gehminuten',
+                          'Schule Gehminuten',
+                        ])
+                          if (property[key].isNotEmpty)
+                            key: '${property[key]} Min.',
+                        for (final key in [
+                          'Parkplatzkosten',
+                          'Renovationskosten',
+                        ])
+                          if (property[key].isNotEmpty)
+                            key: francs(property[key]),
+                        if (property['Verfügbar ab'].isNotEmpty)
+                          'Verfügbar ab': shortDate(property['Verfügbar ab']),
+                      }),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 if (owner != null || seller != null)
@@ -679,9 +764,7 @@ extension _RealEstate on _WorkspaceState {
           ),
         ),
         const SizedBox(height: 13),
-        if (matches.any(
-          (match) => match.property.flag('Neu') && match.score >= 70,
-        ))
+        if (matches.any((match) => match.property.flag('Neu') && match.strong))
           const Padding(
             padding: EdgeInsets.only(bottom: 11),
             child: Align(
@@ -709,14 +792,22 @@ extension _RealEstate on _WorkspaceState {
               children: [
                 _panelTitle(
                   showBuyer ? match.buyer.name : match.property.name,
-                  action: _Pill(
-                    '${match.score} %',
-                    color: match.score >= 70
-                        ? green
-                        : match.score >= 40
-                        ? amber
-                        : red,
-                  ),
+                  action: switch (match.state) {
+                    MatchState.excluded => const _Pill(
+                      'Ausgeschlossen',
+                      color: red,
+                    ),
+                    MatchState.declined => const _Pill('Abgelehnt', color: red),
+                    MatchState.review => const _Pill('Zu prüfen', color: amber),
+                    MatchState.eligible => _Pill(
+                      '${match.score} %',
+                      color: match.score >= 70
+                          ? green
+                          : match.score >= 40
+                          ? amber
+                          : red,
+                    ),
+                  },
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -728,24 +819,40 @@ extension _RealEstate on _WorkspaceState {
                   spacing: 5,
                   runSpacing: 5,
                   children: [
-                    for (final reason in match.reasons)
-                      _Pill(
-                        reason,
-                        color: reason == 'Über Budget' ? red : muted,
-                      ),
+                    for (final reason in match.exclusions)
+                      _Pill(reason, color: red),
+                    for (final reason in match.review)
+                      _Pill(reason, color: amber),
+                    if (match.state == MatchState.eligible)
+                      for (final reason in match.reasons) _Pill(reason),
                   ],
                 ),
+                if (match.feedback.firstOrNull case final latest?) ...[
+                  const SizedBox(height: 9),
+                  Text(
+                    [
+                      latest.status,
+                      latest.reason,
+                    ].where((value) => value.isNotEmpty).join(' · '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 3,
                   runSpacing: 2,
                   children: [
                     TextButton(
-                      onPressed: () =>
-                          _propertyDetail(match.property, buyer: match.buyer),
+                      onPressed: () => _propertyDetail(
+                        match.property,
+                        buyer: _canOffer(match) ? match.buyer : null,
+                      ),
                       child: const Text('Objekt öffnen'),
                     ),
-                    if (match.property.flag('Dossier/Exposé'))
+                    if (_canOffer(match) &&
+                        match.property.flag('Dossier/Exposé'))
                       TextButton(
                         onPressed: () => _expose(match.property, match.buyer),
                         child: const Text('Exposé senden'),
@@ -755,6 +862,10 @@ extension _RealEstate on _WorkspaceState {
                         onPressed: () => _contactDetail(match.buyer),
                         child: const Text('Kontakt öffnen'),
                       ),
+                    TextButton(
+                      onPressed: () => _matchHistory(match),
+                      child: const Text('Verlauf'),
+                    ),
                   ],
                 ),
               ],
@@ -764,6 +875,54 @@ extension _RealEstate on _WorkspaceState {
       minWidth: 271,
       maxColumns: 3,
     );
+  }
+
+  bool _canOffer(Match match) =>
+      match.state == MatchState.eligible || match.state == MatchState.review;
+
+  Future<void> _matchHistory(Match match) => detail(
+    'Objektverlauf',
+    () => _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _panelTitle(
+            match.property.name,
+            action: TextButton(
+              onPressed: () => _feedbackForm(match),
+              child: const Text('Rückmeldung erfassen'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _items([
+            for (final entry in readMatchFeedback(match.buyer, match.property))
+              _row(
+                entry.status,
+                subtitle: entry.reason,
+                trailing: _Pill(shortDate(entry.date)),
+              ),
+          ], empty: 'Noch keine Rückmeldungen'),
+        ],
+      ),
+    ),
+    subtitle: match.buyer.name,
+  );
+
+  Future<void> _feedbackForm(Match match) async {
+    final result = await form('Rückmeldung erfassen', [
+      _Field.select('Status', _choices(feedbackStatuses), required: true),
+      const _Field('Grund', label: 'Grund oder Notiz (optional)', long: true),
+    ]);
+    if (result == null || !mounted) return;
+    data.change(
+      () => addMatchFeedback(
+        match.buyer,
+        match.property,
+        result['Status']!,
+        result['Grund'] ?? '',
+      ),
+    );
+    toast('Rückmeldung gespeichert');
   }
 
   Future<void> _expose(Record property, Record buyer) async {
