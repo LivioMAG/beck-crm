@@ -1,0 +1,414 @@
+1. Login & Benutzerverwaltung
+Funktion
+Beschreibung
+Login-Maske
+Anmeldung mit Benutzer-Dropdown und Passwort. BECK-CI-Branding mit Logo
+3 Rollen
+Administrator (Vollzugriff), Manager (eingeschränkt), Mitarbeiter (nur eigene Daten)
+6 Berechtigungen
+GL-Kontakte sehen, Daten exportieren, Berechtigungen verwalten, Adressen drucken, Kontakte löschen, Gruppen-Mail senden — einzeln pro Benutzer konfigurierbar
+Benutzerverwaltung
+Neue Mitarbeiter anlegen, Passwörter setzen, Konten aktivieren/deaktivieren, Rollen-Voreinstellungen
+Abmelden
+Sicheres Logout über Sidebar
+2. Dashboard
+Funktion
+Beschreibung
+6 KPI-Karten
+Verkäufer, Käufer, Objekte (aktiv), Matches, offene Aufgaben (mit Überfällig-Warnung), Eigentümer
+Meine Aufgaben
+Die 4 nächsten offenen Aufgaben des angemeldeten Benutzers
+Erinnerungen (14 Tage)
+Geburtstage und Termine in den nächsten 14 Tagen, farbcodiert
+Letzte Aktivitäten
+Die 4 letzten Anrufe, Mails, Besichtigungen, Notizen mit Mitarbeiter-Zuordnung
+3. Kontaktverwaltung (7 Typen)
+Kontakttyp
+Symbol
+Besondere Felder
+Verkäufer
+🏠
+Objekt, Mandatsstatus (Aktiv/In Verhandlung/Abgeschlossen), Pipeline-Phase, verknüpfte Liegenschaften
+Käufer
+🔑
+Budget min./max., Objekttyp, Zimmer, Region, PLZ-Liste, Kantone (Mehrfach), Matching-Tab
+Eigentümer
+📈
+Portfolio, Strategie, verknüpfte Liegenschaften, verknüpfte Architektur-Projekte
+Handwerker
+🔧
+Firma, Haupt-Gewerk, alle Gewerke (kommagetrennt), Pill-Filter nach Gewerk
+Netzwerk
+🤝
+Firma, Funktionen (kommagetrennt), Pill-Filter nach Funktion
+Netzwerkpartner
+⭐
+Firma, Partnertyp, Pill-Filter nach Partnertyp
+GL-Kontakte
+🔒
+Budget, doppelt geschützt (Berechtigung + GL-Passwort)
+3.1 Personentypen (für Verkäufer, Käufer, Eigentümer)
+Typ
+Symbol
+Felder
+Einzelperson
+Initialen
+Titel (Dr./Prof./lic.iur./etc.), Vorname, Nachname
+Ehepaar / Partner
+👫
+Person 1 + Person 2 (Titel, Vorname, opt. abw. Nachname)
+Familie
+👨‍👩‍👧
+Familienname, Hauptkontaktperson
+Juristische Person
+🏢
+Firmenname, Rechtsform (AG/GmbH/Stiftung/Verein/Genossenschaft/etc.), UID-Nummer, Kontaktperson
+3.2 Allgemeine Kontaktfelder
+Feld
+Beschreibung
+Vollständige Adresse
+Strasse, PLZ, Ort, Kanton (alle 26 CH-Kantone)
+E-Mail / Telefon
+Kontaktdaten
+Kontaktherkunft
+Empfehlung, Website, Inserat, Messe, Netzwerk, Direktkontakt, Social Media, Off-Market, Sonstiges
+Verantwortlich
+Zuständiger Mitarbeiter (aus Benutzerliste)
+Geburtstag
+Automatische jährliche Erinnerung
+Erinnerungsdatum
+Einmalig oder jährlich wiederkehrend
+Erinnerungsnotiz
+Freitext
+Newsletter-Einwilligung
+nDSG Opt-In für Gruppen-Mail
+Notizen
+Freitext
+3.3 Kontakt-Detailansicht (Modal mit Tabs)
+Tab
+Inhalt
+Info
+Personen-/Firmen-Info, Adressblock, Erinnerungsbanner, typspezifische Daten, Notizen
+Aktivitäten
+Kontakthistorie mit Erfassungs-Button
+Aufgaben
+Verknüpfte Aufgaben mit Erfassungs-Button
+Liegenschaften
+(nur Verkäufer/Eigentümer) Verknüpfte Objekte mit Preis, Status. Button «+ Neue Liegenschaft»
+Architektur
+(nur Eigentümer) Verknüpfte Bauprojekte mit Phase
+Matching
+(nur Käufer) Automatische Objekt-Vorschläge mit Score
+3.4 Aktionen pro Kontakt
+Aktion
+Beschreibung
+📄 Dok. senden
+Öffnet Outlook mit vorbereiteter E-Mail
+✏️ Bearbeiten
+Kontaktformular öffnen
+Löschen
+Kontakt entfernen (nur mit Berechtigung, mit Bestätigung)
+🖨️ Adresse drucken
+BECK-CI-Layout (nur mit Berechtigung)
+4. Liegenschaften
+Funktion
+Beschreibung
+Objekt erfassen
+Adresse, Typ (EFH/WHG/MFH/Bauland/Gewerbe), Zimmer, Fläche, Grundstück, Preis/Preis max., Status, Beschreibung
+Eigentümer-Verknüpfung
+Dropdown aus Eigentümer-Kontakten
+Verkäufer-Verknüpfung
+Dropdown aus Verkäufer-Kontakten (mit Mandatsstatus)
+NEU-Badge
+Markiert frisch erfasste Objekte, Bonus im Matching
+Off-Market-Badge
+Dunkles Badge für diskrete Vermarktung
+Kaufdatum
+Für automatische Kaufjahrestag-Erinnerung
+Status-Pipeline
+Neu → In Vermarktung → In Verhandlung → Verkauft
+Pill-Filter
+Nach Status filterbar
+Löschen
+Mit Bestätigung (nur mit Berechtigung)
+4.1 Dossier-Checkliste (pro Objekt)
+10 Prüfpunkte mit Fortschrittsbalken direkt in der Objektliste:
+Grundbuchauszug
+Katasterplan
+Gebäudeversicherungsnachweis
+Energieausweis (GEAK)
+Grundrisspläne
+Fotos (Innen/Aussen)
+Exposé erstellt
+Schuldbrief-Auskunft
+Mietzinsübersicht (bei MFH)
+Nebenkosten-Abrechnung
+4.2 Käufer-Matching
+Eigenschaft
+Beschreibung
+Score-Berechnung
+0–100% aus Preis (35 Pkt.), Kanton (20), PLZ/Region (20), Zimmer (15), Neu-Bonus (5)
+Farbcodes
+Grün ≥70%, Amber ≥40%, Rot <40%
+Kriterien-Tags
+Pro Match: «Preis passt», «Kt. LU», «PLZ passt», «Zu teuer» etc.
+Zwei Ansichten
+Nach Käufer und nach Objekt umschaltbar
+Exposé senden
+1-Klick → Outlook öffnet mit vorbereiteter Mail an Käufer
+NEU-Banner
+Warnung bei neuen Objekten mit Matching-Potenzial
+5. Architektur-Modul
+Funktion
+Beschreibung
+Projekttypen
+Sanierung, Umbau, Neubau, Erweiterung/Aufstockung, Machbarkeitsstudie, Energetische Sanierung
+9 SIA-Phasen
+Anfrage → Machbarkeit → Vorprojekt → Bauprojekt → Bewilligung → Ausschreibung → Ausführung → Abnahme → Abgeschlossen
+Eigentümer-Verknüpfung
+Dropdown aus bestehenden Kontakten
+Budget & GEAK
+Projektbudget in CHF, GEAK-Entwicklung (z.B. D → B)
+Projekt-Pipeline
+Kanban-Ansicht über alle 9 Phasen mit Fortschrittsbalken pro Projekt
+Löschen
+Projekt löschbar (mit Berechtigung)
+5.1 Phasen-Checklisten (80+ Prüfpunkte)
+Phase
+Punkte
+Beispiele
+Anfrage
+8
+Erstgespräch, Bestandsaufnahme, Zonenplan, Grobkostenschätzung ±25%
+Machbarkeit
+10
+GEAK, Grauenergie, Varianten, Wirtschaftlichkeit, Honorarofferte SIA 102
+Vorprojekt
+9
+Pläne 1:200, Minergie/MuKEn, Fassadenkonzept, Kostenschätzung ±15% BKP
+Bauprojekt
+10
+Pläne 1:100, Statik, Brandschutz, Schallschutz, KV ±10%
+Bewilligung
+8
+Baugesuch, Nachbarzustimmung, Einsprachen, Baubewilligung
+Ausschreibung
+8
+NPK-Unterlagen, Offertspiegel, Werkverträge, Versicherungen, Baukredit
+Ausführung
+12
+Baubeginn-Anzeige, Rohbau-Kontrollen, Bausitzungen, Kostenstand, Mängelprotokoll
+Abnahme
+11
+Vorabnahme, Schlussrechnung, Garantiescheine, GEAK-Zertifikat, Übergabe
+Abgeschlossen
+4
+Honorar-Schlussrechnung, Archivierung, Garantiefristen, Kundenzufriedenheit
+Jede Phase hat eigenen Fortschrittsbalken. Aktuelle Phase blau markiert. Druckbar als PDF mit BECK-Briefkopf.
+6. Aufgaben & Erinnerungen
+6.1 Aufgaben-Manager
+Funktion
+Beschreibung
+Aufgabe erstellen
+Titel, Fälligkeitsdatum, Priorität (Normal/Hoch), Zuweisung, Kontaktverknüpfung (Autocomplete), Notiz
+Filter
+Alle / Offen / Überfällig / Erledigt
+Mitarbeiter-Filter
+Admin kann nach Mitarbeiter filtern
+Erledigen
+Checkbox-Toggle
+Überfällig-Warnung
+Rote Markierung, Badge in Sidebar
+Sichtbarkeit
+Admin sieht alle, Mitarbeiter nur eigene
+Löschen
+Mit Berechtigung
+6.2 Erinnerungen (3 Kategorien)
+Kategorie
+Symbol
+Verhalten
+Geburtstage
+🎂
+Immer jährlich, automatisch aus Geburtstagsfeld, alle Kontakttypen
+Jährliche Erinnerungen
+🔁
+Kaufjahrestage, manuell als «jährlich» markierte Erinnerungen
+Einmalige Erinnerungen
+🔔
+Einmalig, nach Erledigung abhakbar mit ✓-Button
+Farbcodes: Rot ≤7 Tage, Amber ≤14 Tage, Grün >14 Tage. Quick-Mail ✉️ direkt aus Erinnerungsliste.
+Standalone-Erinnerung: Button «+ Einmalige Erinnerung» — Kontakt optional, Datum, Typ (einmalig/jährlich).
+6.3 Schnell-Erfassung ⚡
+Funktion
+Beschreibung
+Schwebendes Panel
+Öffnet am unteren Bildschirmrand, ohne die aktuelle Seite zu verlassen
+Felder
+Typ (Anruf/Mail/Besichtigung/Notiz), Datum, Kontaktname (Autocomplete), Notiz
+Auto-Verknüpfung
+Findet automatisch die contactId anhand des Namens
+10-Sekunden-Erfassung
+Ideal für Telefonate während des Gesprächs
+7. Verkaufs-Pipeline
+Funktion
+Beschreibung
+Kanban-Board
+5 Spalten: Erstkontakt → Bewertung → Mandat → In Vermarktung → In Verhandlung
+Karten
+Zeigen Kontaktname, Objekt, Verantwortlichen
+Phasen-Zuweisung
+Im Verkäufer-Formular unter «Pipeline-Phase»
+Zähler
+Blaue Badges pro Spalte
+8. Berichte & Statistiken
+Bericht
+Beschreibung
+Kontaktherkunft
+Balkendiagramm: Empfehlung, Website, Messe etc.
+Aktivitäten nach Typ
+Balkendiagramm: Anrufe, Mails, Besichtigungen, Notizen
+Aktivitäten nach Mitarbeiter
+Balkendiagramm: Wer war am aktivsten?
+Liegenschaften nach Status
+Balkendiagramm: Neu/In Vermarktung/In Verhandlung/Verkauft
+4 Kennzahlen
+Aktive Mandate, Verkauft, Total Aktivitäten, Newsletter-Einwilligungen
+Excel Totalexport
+Mehrseitiges .xlsx mit allen Kontakten, Objekten, Aufgaben (GL-Berechtigung)
+9. Kommunikation
+9.1 Aktivitäten
+Funktion
+Beschreibung
+4 Typen
+📞 Anruf, ✉️ E-Mail, 🏠 Besichtigung, 📝 Notiz
+Chronologisch
+Sortiert nach Datum, mit Mitarbeiter-Zuordnung
+Filter
+Freitext-Suche + Typ-Filter
+Erfassung
+Via Aktivitäten-Seite, Kontakt-Detail, oder Schnell-Erfassung ⚡
+Mitarbeiter-Sichtbarkeit
+Staff sieht nur eigene Aktivitäten
+9.2 Gruppen-Mail
+Funktion
+Beschreibung
+Automatische Gruppen
+Nach Gewerk, Funktion, Partnertyp, alle Verkäufer, alle Käufer
+nDSG-konform
+Nur Kontakte mit Opt-In werden angezeigt
+Versand via Outlook
+Öffnet Outlook mit BCC-Liste
+3 Vorlagen
+Marktbericht, Neues Objekt, Jahresende
+Excel-Export
+E-Mail-Adressen als .xlsx für Mailchimp/HubSpot
+9.3 Briefe & Vorlagen
+Funktion
+Beschreibung
+Empfänger-Picker
+Dropdown aus Verkäufern, Käufern, Eigentümern
+Automatische Adressvorschau
+Passt sich an Personentyp an (jur. Person mit z.H.)
+PDF-Druck
+BECK-Briefkopf mit Georgia-Serif, blauer Linie, Fusszeile
+Outlook-Versand
+Als E-Mail mit gleichem Inhalt
+9 Vorlagen
+Verkaufsangebot, Besichtigungseinladung, Mandatsbestätigung, Bewertungsangebot, Eigentümervertretung, Machbarkeitsstudie, Sanierungskonzept, Baubegleitung-Offerte, Verkaufsabschluss
+9.4 Etiketten & Adressdruck
+Funktion
+Beschreibung
+5 Etikettenformate
+Herma 4455, Avery L7163, Avery L7160, Herma 4200, Grossbrief
+Gruppenauswahl
+Alle Kontakte oder nach Typ
+Ab Etikett Nr.
+Für teilverbrauchte Bögen
+Vollständige Adresse
+Nur mit Berechtigung «Adressen drucken»
+Briefumschläge
+C4, C5, C6 direkt bedrucken mit BECK-Absender (GL-geschützt)
+10. Import & Export
+Funktion
+Beschreibung
+Excel/CSV Import
+Drag&Drop oder Dateiauswahl, Vorschau, Zuordnung nach Kontakttyp
+Importvorlage
+.xlsx-Vorlage mit allen Spaltenbezeichnungen
+JSON Backup
+Vollständiger Export aller Daten
+Backup importieren
+.json-Datei laden
+Automatische Migration
+Erkennt Daten aus früheren Versionen (beck_/beck3_/beck4_), gelbes Banner
+Excel Totalexport
+Mehrseitiges .xlsx (GL-Berechtigung erforderlich)
+11. Datenschutz (nDSG)
+Funktion
+Beschreibung
+Auskunftsrecht (Art. 25)
+E-Mail eingeben → alle Daten als JSON exportieren
+Recht auf Löschung (Art. 32)
+E-Mail eingeben → alle Daten dieser Person löschen
+Einwilligungsübersicht
+Tabelle aller Kontakte mit Newsletter-Status, einzeln erteilbar/widerrufbar
+Lokale Speicherung
+Alle Daten im Browser (localStorage), kein Server, keine Cloud
+12. Einstellungen
+Funktion
+Beschreibung
+Unternehmensangaben
+Firmenname, Adresse, Telefon, E-Mail (für Briefkopf)
+GL-Passwort
+Separates Passwort für vertraulichen GL-Bereich
+Datenmigration & Backup
+Prominenter Export/Import-Bereich mit Anleitung
+Daten zurücksetzen
+Alle Daten löschen und Demo-Daten laden (nur Admin)
+13. Übergreifende Funktionen
+Funktion
+Beschreibung
+BECK Corporate Identity
+Logo (Beck + blaue Linie + REAL ESTATE), Farben (#3a9fd1, #f7f6f4, #4a4a4a), Georgia-Serif für Brand
+Favicon
+BECK-«B» als Browser-Tab-Icon
+Sidebar-Badges
+Rote Zähler für Erinnerungen und überfällige Aufgaben
+Suche
+Freitext-Suche in jeder Kontaktliste
+Pill-Filter
+Klickbare Kategorie-Buttons für Handwerker, Netzwerk, Partner, Liegenschaften
+Responsive Tables
+Horizontales Scrolling bei schmalen Bildschirmen
+Druckansicht
+Alle Print-Layouts blenden Sidebar/Navigation aus
+Toast-Meldungen
+Kurze Bestätigungen unten rechts mit blauem BECK-Akzent
+Total: 13 Module, 80+ Einzelfunktionen, 80+ Architektur-Checklistenpunkte, 9 Briefvorlagen, 5 Etikettenformate, 4 Personentypen, 7 Kontakttypen, 3 Benutzerrollen, 6 Berechtigungen.
+
+--
+BECK Real Estate CRM
+Das massgeschneiderte CRM für Schweizer Immobilienunternehmen — lokal, sicher, sofort einsatzbereit.
+Was ist es?
+Ein vollständiges Kundenverwaltungs- und Projektsteuerungstool für Immobilienunternehmen, das ohne Server, Cloud oder Installation auskommt. Eine einzige Datei, die im Browser läuft — auf Windows und Mac. Alle Daten bleiben lokal auf Ihrem Gerät. nDSG-konform ab der ersten Sekunde.
+Für wen ist es gebaut?
+Für Immobilienunternehmen die Verkauf, Eigentümervertretung, Bewertung und Architektur unter einem Dach vereinen. Von der Akquise bis zum Notartermin, von der Machbarkeitsstudie bis zur Bauabnahme — ein Tool für alles.
+Was kann es?
+Kontakte & Beziehungen
+Sieben spezialisierte Kontakttypen — Verkäufer, Käufer, Eigentümer, Handwerker, Netzwerk, Netzwerkpartner und vertrauliche GL-Kontakte — jeweils mit massgeschneiderten Feldern. Einzelpersonen, Ehepaare, Familien und juristische Personen (AG, GmbH, Stiftung etc.) werden sauber unterschieden. Jeder Kontakt führt seine eigene Aktivitätshistorie, Aufgabenliste und verknüpften Liegenschaften. Handwerker und Netzwerkkontakte lassen sich nach Gewerk oder Funktion filtern.
+Liegenschaften & Matching
+Objekte werden mit Eigentümern und Verkäufern verknüpft. Eine 10-Punkte-Dossier-Checkliste (Grundbuchauszug bis Exposé) zeigt den Vorbereitungsstand auf einen Blick. Die Matching-Engine vergleicht automatisch alle Käufer-Suchprofile mit allen Objekten und berechnet einen Score aus Preis, Lage, Grösse und Aktualität. Ein Klick öffnet die Exposé-Mail im Outlook.
+Architektur & Bauprojekte
+Ein eigenes Modul für Architekturprojekte — von der Sanierung über den Umbau bis zum Neubau. Neun Projektphasen nach SIA-Standard, jede mit einer detaillierten Checkliste (über 80 Prüfpunkte insgesamt): von der ersten Bestandsaufnahme über Baugesuch, Ausschreibung und Bausitzungen bis zur Schlussabnahme und GEAK-Zertifikat. Projekte werden direkt mit Eigentümern verknüpft. Eine Kanban-Ansicht zeigt alle Projekte nach Phase.
+Aufgaben & Tagesgeschäft
+Ein Aufgaben-Manager mit Fälligkeit, Priorität und Mitarbeiter-Zuweisung. Überfällige Aufgaben werden rot markiert und im Sidebar gezählt. Drei Erinnerungskategorien — Geburtstage (automatisch jährlich), jährliche Termine (Kaufjahrestage etc.) und einmalige Erinnerungen (abhakbar). Die Schnell-Erfassung erfasst einen Anruf oder eine Notiz in zehn Sekunden, ohne die aktuelle Seite zu verlassen.
+Verkaufs-Pipeline
+Alle Verkaufsmandate auf einem Kanban-Board: Erstkontakt → Bewertung → Mandat → In Vermarktung → In Verhandlung. Sofortiger Überblick, wo welches Mandat steht.
+Kommunikation
+Gruppen-Mails an vordefinierte Empfängergruppen (nach Gewerk, Funktion, Partnertyp) via Outlook — nur an Kontakte mit Newsletter-Einwilligung. Neun professionelle Briefvorlagen im CI-Layout, von der Mandatsbestätigung bis zur Baubegleitungs-Offerte. Etiketten in fünf Standardformaten und Briefumschläge (C4/C5/C6) direkt bedruckbar.
+Berichte
+Balkendiagramme zu Kontaktherkunft, Aktivitäten nach Typ und Mitarbeiter, Objektstatus. Vier Kennzahlen auf einen Blick. Totalexport aller Daten als mehrseitiges Excel.
+Sicherheit & Datenschutz
+Login mit Passwort, drei Rollen, sechs granulare Berechtigungen. Der GL-Bereich ist doppelt geschützt. Auskunfts- und Löschrecht nach nDSG integriert. Alle Daten lokal — kein Server, keine Cloud, keine Drittanbieter.
+Backup & Migration
+Ein-Klick-Backup als JSON-Datei. Beim Öffnen einer neuen Version werden alte Daten automatisch erkannt und können mit einem Klick migriert werden. Excel/CSV-Import mit Drag&Drop für bestehende Kontaktlisten.
